@@ -27,3 +27,7 @@ The summary file contains the thing ID and file ID of each file.
 ###Author:###
 
 Qingnan Zhou
+
+New York University
+
+<https://www.cs.nyu.edu/~qnzhou/>
