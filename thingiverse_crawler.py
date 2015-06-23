@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import os.path
 import requests
 import re
 import time
@@ -79,6 +80,9 @@ def get_download_links(thing_ids):
             r = requests.head(url);
             link = r.headers.get("Location", None);
             if link is not None:
+                __, ext = os.path.splitext(link);
+                if ext.lower() not in [".stl", ".obj", ".ply", ".off"]:
+                    continue;
                 links.append([thing_id, file_id, link]);
 
     return links;
