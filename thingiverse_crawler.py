@@ -47,6 +47,9 @@ def crawl_thing_ids(N, end_date=None):
         if len(thing_ids) > N:
             break;
 
+        # Sleep a bit to avoid being mistaken as DoS.
+        time.sleep(0.5);
+
     return thing_ids[:N];
 
 def crawl_new_things(N):
@@ -60,6 +63,9 @@ def crawl_new_things(N):
         thing_ids += parse_thing_ids(r.text);
         if len(thing_ids) > N:
             break;
+
+        # Sleep a bit to avoid being mistaken as DoS.
+        time.sleep(0.5);
 
     return thing_ids[:N];
 
@@ -84,6 +90,9 @@ def get_download_links(thing_ids):
                 if ext.lower() not in [".stl", ".obj", ".ply", ".off"]:
                     continue;
                 links.append([thing_id, file_id, link]);
+
+        # Sleep a bit to avoid being mistaken as DoS.
+        time.sleep(0.5);
 
     return links;
 
