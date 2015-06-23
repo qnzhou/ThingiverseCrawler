@@ -24,7 +24,7 @@ def datetime_to_timestamp(dt):
 def parse_thing_ids(text):
     pattern = "thing:(\d{5,7})";
     matched = re.findall(pattern, text);
-    return set([int(val) for val in matched]);
+    return [int(val) for val in matched];
 
 def parse_file_ids(text):
     pattern = "download:(\d{5,7})";
@@ -50,7 +50,7 @@ def crawl_thing_ids(N, end_date=None):
         # Sleep a bit to avoid being mistaken as DoS.
         time.sleep(0.5);
 
-    return thing_ids[:N];
+    return set(thing_ids[:N]);
 
 def crawl_new_things(N, sleep_seconds):
     baseurl = "http://www.thingiverse.com/newest/page:{}";
@@ -67,7 +67,7 @@ def crawl_new_things(N, sleep_seconds):
         # Sleep a bit to avoid being mistaken as DoS.
         time.sleep(sleep_seconds);
 
-    return thing_ids[:N];
+    return set(thing_ids[:N]);
 
 def get_download_links(thing_ids, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
