@@ -52,7 +52,7 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids[:N];
 
-def crawl_new_things(N):
+def crawl_new_things(N, sleep_seconds):
     baseurl = "http://www.thingiverse.com/newest/page:{}";
     thing_ids = [];
     for i in range(N/12 + 1):
@@ -65,11 +65,11 @@ def crawl_new_things(N):
             break;
 
         # Sleep a bit to avoid being mistaken as DoS.
-        time.sleep(0.5);
+        time.sleep(sleep_seconds);
 
     return thing_ids[:N];
 
-def get_download_links(thing_ids):
+def get_download_links(thing_ids, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
     file_ids = [];
     for thing_id in thing_ids:
@@ -92,7 +92,7 @@ def get_download_links(thing_ids):
                 links.append([thing_id, file_id, link]);
 
         # Sleep a bit to avoid being mistaken as DoS.
-        time.sleep(0.5);
+        time.sleep(sleep_seconds);
 
     return links;
 
@@ -101,6 +101,8 @@ def parse_args():
             description="Crawl data from thingiverse",
             epilog="Written by Qingnan Zhou <qnzhou at gmail dot com>");
     #parser.add_argument("--end-date", help="e.g. 06/22/2015", default=None);
+    parser.add_argument("--sleep", type=float,
+            help="pause between downloads in s");
     parser.add_argument("N", type=int,
             help="how many files to crawl");
     return parser.parse_args();
@@ -116,8 +118,9 @@ def main():
 
     #print("Crawling things uploaded before {}".format(args.end_date));
     #thing_ids = crawl_thing_ids(args.N, args.end_date);
-    thing_ids = crawl_new_things(args.N);
-    links = get_download_links(thing_ids);
+    sleep_seconds = args.sleep;
+    thing_ids = crawl_new_things(args.N, sleep_seconds);
+    links = get_download_links(thing_ids, sleep_seconds);
 
     with open("summary.csv", 'w') as fout:
         fout.write("thing_id, fild_id, link\n");
