@@ -8,13 +8,16 @@ flow is not yet supported.
 
 ###Example:###
 
-    $ #Retrieve information of the newest 1000 things.
+Retrieve information of the newest 1000 things:
+
     $ ./thingiverse_crawler.py 1000
 
-    $ #Download all 1000 things.
+Two files will be created: `links.txt` and `summary.csv`.  To download all 1000 things:
+
     $ wget -i links.txt
 
-    $ #The summary file contains the thing ID and file ID of each file.
+The summary file contains the thing ID and file ID of each file.
+
     $ head summary.csv
     thing_id, fild_id, link
     894587,1414437,https://thingiverse-production-new.s3.amazonaws.com/assets/e1/9b/6e/ca/ad/CORE.stl
