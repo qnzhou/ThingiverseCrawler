@@ -54,7 +54,8 @@ def crawl_new_things(N):
     for i in range(N/12 + 1):
         url = baseurl.format(i+1);
         r = requests.get(url);
-        assert(r.status_code==200);
+        if r.status_code != 200:
+            print("failed to retrieve page {}".format(i));
         thing_ids += parse_thing_ids(r.text);
         if len(thing_ids) > N:
             break;
@@ -67,7 +68,8 @@ def get_download_links(thing_ids):
     for thing_id in thing_ids:
         url = base_url.format("thing", thing_id);
         r = requests.get(url);
-        assert(r.status_code == 200);
+        if r.status_code != 200:
+            print("failed to retrieve thing {}".format(thing_id));
         file_ids.append(parse_file_ids(r.text));
 
     links = [];
@@ -103,7 +105,6 @@ def main():
     #thing_ids = crawl_thing_ids(args.N, args.end_date);
     thing_ids = crawl_new_things(args.N);
     links = get_download_links(thing_ids);
-    links = links[:args.N];
 
     with open("summary.csv", 'w') as fout:
         fout.write("thing_id, fild_id, link\n");
