@@ -38,36 +38,36 @@ def crawl_thing_ids(N, end_date=None):
     baseurl = "http://www.thingiverse.com/search/recent/things/page:{}?q=&start_date=&stop_date={}&search_mode=advanced&description=&username=&tags=&license=";
 
     end_date = datetime_to_timestamp(end_date);
-    thing_ids = [];
+    thing_ids = set();
     for i in range(N/12 + 1):
         url = baseurl.format(i, end_date);
         r = requests.get(url);
         assert(r.status_code==200);
-        thing_ids += parse_thing_ids(r.text);
+        thing_ids.update(parse_thing_ids(r.text));
         if len(thing_ids) > N:
             break;
 
         # Sleep a bit to avoid being mistaken as DoS.
         time.sleep(0.5);
 
-    return set(thing_ids[:N]);
+    return thing_ids;
 
 def crawl_new_things(N, sleep_seconds):
     baseurl = "http://www.thingiverse.com/newest/page:{}";
-    thing_ids = [];
+    thing_ids = set();
     for i in range(N/12 + 1):
         url = baseurl.format(i+1);
         r = requests.get(url);
         if r.status_code != 200:
             print("failed to retrieve page {}".format(i));
-        thing_ids += parse_thing_ids(r.text);
+        thing_ids.update(parse_thing_ids(r.text));
         if len(thing_ids) > N:
             break;
 
         # Sleep a bit to avoid being mistaken as DoS.
         time.sleep(sleep_seconds);
 
-    return set(thing_ids[:N]);
+    return thing_ids;
 
 def get_download_links(thing_ids, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
@@ -101,7 +101,7 @@ def parse_args():
             description="Crawl data from thingiverse",
             epilog="Written by Qingnan Zhou <qnzhou at gmail dot com>");
     #parser.add_argument("--end-date", help="e.g. 06/22/2015", default=None);
-    parser.add_argument("--sleep", type=float,
+    parser.add_argument("--sleep", type=float, default=0.0,
             help="pause between downloads in s");
     parser.add_argument("N", type=int,
             help="how many files to crawl");
