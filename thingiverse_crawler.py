@@ -113,7 +113,7 @@ def crawl_new_things(N, sleep_seconds, output_dir):
         url = baseurl.format(page+1);
         r = requests.get(url);
         if r.status_code != 200:
-            print("failed to retrieve page {}".format(i));
+            print("failed to retrieve page {}".format(url));
 
         for thing_id in parse_thing_ids(r.text):
             if thing_id in thing_ids:
@@ -126,18 +126,17 @@ def crawl_new_things(N, sleep_seconds, output_dir):
                     continue;
                 file_ids.add(file_id);
                 print("  file id: {}".format(file_id));
-                filename = download_file(file_id, output_dir);
+                result = download_file(file_id, output_dir);
+                if result is None: continue;
+                filename, name, link = result;
                 if filename is not None:
-                    if should_keep(filename):
-                        records.append((thing_id, file_id, filename, license));
-                        if len(records) >= N:
-                            return records;
-                    else:
-                        os.remove(filename);
+                    records.append((thing_id, file_id, filename, name, license, link));
+                    if len(records) >= N:
+                        return records;
 
         page += 1;
         # Sleep a bit to avoid being mistaken as DoS.
-        #time.sleep(sleep_seconds);
+        time.sleep(sleep_seconds);
 
 def get_thing(thing_id, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
@@ -165,14 +164,15 @@ def download_file(file_id, output_dir):
     link = get_download_link(file_id);
     if link is None:
         return None;
-    __, ext = os.path.splitext(link);
+    name, ext = os.path.splitext(link);
     output_file = "{}{}".format(file_id, ext.lower());
     output_file = os.path.join(output_dir, output_file);
     command = "wget -q --tries=20 --waitretry 20 -O {} {}".format(output_file, link);
-    check_call(command.split());
-    return output_file;
+    #check_call(command.split());
+    return output_file, name, link;
 
 def should_keep(filename):
+    return true;
     try:
         mesh = pymesh.load_mesh(filename);
         if mesh.dim != 3: return False;
@@ -216,7 +216,7 @@ def main():
     records = crawl_new_things(args.N, sleep_seconds, output_dir);
 
     with open("summary.csv", 'w') as fout:
-        fout.write("thing_id, fild_id, file, license\n");
+        fout.write("thing_id, fild_id, file, name, license, link\n");
         for entry in records:
             fout.write(",".join([str(val) for val in entry]) + "\n");
 
