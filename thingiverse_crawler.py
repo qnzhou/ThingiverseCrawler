@@ -2,10 +2,13 @@
 
 import argparse
 import datetime
+import os
 import os.path
 import requests
 import re
 import time
+import pymesh
+from subprocess import check_call
 
 def utc_mktime(utc_tuple):
     """Returns number of seconds elapsed since epoch
@@ -52,49 +55,93 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids;
 
-def crawl_new_things(N, sleep_seconds):
-    baseurl = "http://www.thingiverse.com/newest/page:{}";
+def crawl_new_things(N, sleep_seconds, output_dir):
+    #baseurl = "http://www.thingiverse.com/newest/page:{}";
+    #baseurl = "http://www.thingiverse.com/explore/popular/page:{}";
+    baseurl = "http://www.thingiverse.com/explore/featured/page:{}";
     thing_ids = set();
-    for i in range(N/12 + 1):
-        url = baseurl.format(i+1);
+    file_ids = set();
+    records = [];
+    num_files = 0;
+    page = 0;
+
+    while True:
+        url = baseurl.format(page+1);
         r = requests.get(url);
         if r.status_code != 200:
             print("failed to retrieve page {}".format(i));
-        thing_ids.update(parse_thing_ids(r.text));
-        if len(thing_ids) > N:
-            break;
 
+        for thing_id in parse_thing_ids(r.text):
+            if thing_id in thing_ids:
+                continue;
+            print("thing id: {}".format(thing_id))
+            thing_ids.add(thing_id);
+            for file_id in get_files_in_thing(thing_id, sleep_seconds):
+                if file_id in file_ids:
+                    continue;
+                file_ids.add(file_id);
+                print("  file id: {}".format(file_id));
+                filename = download_file(file_id, output_dir);
+                if filename is not None:
+                    if should_keep(filename):
+                        print("good");
+                        records.append((thing_id, file_id, filename));
+                        if len(records) >= N:
+                            return records;
+                    else:
+                        print("not good");
+                        os.remove(filename);
+
+        page += 1;
         # Sleep a bit to avoid being mistaken as DoS.
-        time.sleep(sleep_seconds);
+        #time.sleep(sleep_seconds);
 
-    return thing_ids;
-
-def get_download_links(thing_ids, sleep_seconds):
+def get_files_in_thing(thing_id, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
     file_ids = [];
-    for thing_id in thing_ids:
-        url = base_url.format("thing", thing_id);
-        r = requests.get(url);
-        if r.status_code != 200:
-            print("failed to retrieve thing {}".format(thing_id));
-        file_ids.append(parse_file_ids(r.text));
 
-    links = [];
-    for i, thing_id in enumerate(thing_ids):
-        for file_id in file_ids[i]:
-            url = base_url.format("download", file_id);
-            r = requests.head(url);
-            link = r.headers.get("Location", None);
-            if link is not None:
-                __, ext = os.path.splitext(link);
-                if ext.lower() not in [".stl", ".obj", ".ply", ".off"]:
-                    continue;
-                links.append([thing_id, file_id, link]);
+    url = base_url.format("thing", thing_id);
+    r = requests.get(url);
+    if r.status_code != 200:
+        print("failed to retrieve thing {}".format(thing_id));
+    return parse_file_ids(r.text);
 
-        # Sleep a bit to avoid being mistaken as DoS.
-        time.sleep(sleep_seconds);
+def get_download_link(file_id):
+    base_url = "http://www.thingiverse.com/{}:{}";
+    url = base_url.format("download", file_id);
+    r = requests.head(url);
+    link = r.headers.get("Location", None);
+    if link is not None:
+        __, ext = os.path.splitext(link);
+        if ext.lower() not in [".stl", ".obj", ".ply", ".off"]:
+            return None;
+        return link;
 
-    return links;
+def download_file(file_id, output_dir):
+    link = get_download_link(file_id);
+    if link is None:
+        return None;
+    __, ext = os.path.splitext(link);
+    output_file = "{}{}".format(file_id, ext.lower());
+    output_file = os.path.join(output_dir, output_file);
+    command = "wget -q --tries=10 -O {} {}".format(output_file, link);
+    check_call(command.split());
+    return output_file;
+
+def should_keep(filename):
+    try:
+        mesh = pymesh.load_mesh(filename);
+        if mesh.dim != 3: return False;
+        if mesh.vertex_per_face != 3: return False;
+        if not mesh.is_oriented(): return False;
+        if not mesh.is_closed(): return False;
+        degenerated_faces = pymesh.get_degenerated_faces(mesh);
+        if len(degenerated_faces) > 0: return True;
+        self_intersections = pymesh.detect_self_intersection(mesh);
+        if len(self_intersections) > 0: return True;
+        return False;
+    except:
+        return False;
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -103,6 +150,8 @@ def parse_args():
     #parser.add_argument("--end-date", help="e.g. 06/22/2015", default=None);
     parser.add_argument("--sleep", type=float, default=0.0,
             help="pause between downloads in s");
+    parser.add_argument("--output-dir", "-o", help="output directories",
+            default=".");
     parser.add_argument("N", type=int,
             help="how many files to crawl");
     return parser.parse_args();
@@ -119,16 +168,13 @@ def main():
     #print("Crawling things uploaded before {}".format(args.end_date));
     #thing_ids = crawl_thing_ids(args.N, args.end_date);
     sleep_seconds = args.sleep;
-    thing_ids = crawl_new_things(args.N, sleep_seconds);
-    links = get_download_links(thing_ids, sleep_seconds);
+    output_dir = args.output_dir
+    records = crawl_new_things(args.N, sleep_seconds, output_dir);
 
     with open("summary.csv", 'w') as fout:
-        fout.write("thing_id, fild_id, link\n");
-        for link in links:
-            fout.write(",".join([str(val) for val in link]) + "\n");
-
-    with open("links.txt", 'w') as fout:
-        fout.write("\n".join([row[2] for row in links]));
+        fout.write("thing_id, fild_id, file\n");
+        for entry in records:
+            fout.write(",".join([str(val) for val in entry]) + "\n");
 
 if __name__ == "__main__":
     main();
