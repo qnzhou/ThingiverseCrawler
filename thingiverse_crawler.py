@@ -120,7 +120,7 @@ def crawl_new_things(N, sleep_seconds, output_dir):
                 continue;
             print("thing id: {}".format(thing_id))
             thing_ids.add(thing_id);
-            licnese, thing_files = get_thing(thing_id, sleep_seconds);
+            license, thing_files = get_thing(thing_id, sleep_seconds);
             for file_id in thing_files:
                 if file_id in file_ids:
                     continue;
@@ -216,7 +216,7 @@ def main():
     records = crawl_new_things(args.N, sleep_seconds, output_dir);
 
     with open("summary.csv", 'w') as fout:
-        fout.write("thing_id, fild_id, file, name, license, link\n");
+        fout.write("thing_id, file_id, file, name, license, link\n");
         for entry in records:
             fout.write(",".join([str(val) for val in entry]) + "\n");
 
