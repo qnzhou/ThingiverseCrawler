@@ -34,6 +34,50 @@ def parse_file_ids(text):
     matched = re.findall(pattern, text);
     return [int(val) for val in matched];
 
+known_licenses = [
+        ("Creative Commons - Attribution",
+        re.compile("http://creativecommons.org/licenses/by/\d(.\d)?/")),
+
+        ("Creative Commons - Attribution - Share Alike",
+        re.compile("http://creativecommons.org/licenses/by-sa/\d(.\d)?/")),
+
+        ("Creative Commons - Attribution - No Derivatives",
+        re.compile("http://creativecommons.org/licenses/by-nd/\d(.\d)?/")),
+
+        ("Creative Commons - Attribution - Non-Commercial",
+        re.compile("http://creativecommons.org/licenses/by-nc/\d(.\d)?/")),
+
+        ("Attribution - Non-Commercial - Share Alike",
+        re.compile("http://creativecommons.org/licenses/by-nc-sa/\d(.\d)?/")),
+
+        ("Attribution - Non-Commercial - No Derivatives",
+        re.compile("http://creativecommons.org/licenses/by-nc-nd/\d(.\d)?/")),
+
+        ("Creative Commons - Public Domain Dedication",
+        re.compile("http://creativecommons.org/publicdomain/zero/\d(.\d)?/")),
+
+        ("GNU - GPL",
+        re.compile("http://creativecommons.org/licenses/GPL/\d(.\d)?/")),
+
+        ("GNU - LGPL",
+        re.compile("http://creativecommons.org/licenses/LGPL/\d(.\d)?/")),
+
+        ("BSD License",
+        re.compile("http://creativecommons.org/licenses/BSD/")),
+
+        ("Nokia",
+        re.compile("http://www.developer.nokia.com/Terms_and_conditions/3d-printing.xhtml")),
+
+        ("Public Domain",
+        re.compile("http://creativecommons.org/licenses/publicdomain/")),
+        ];
+
+def parse_license(text):
+    for name, pattern in known_licenses:
+        if pattern.search(text):
+            return name;
+    return "unknown_license";
+
 def crawl_thing_ids(N, end_date=None):
     """ This method extract N things that were uploaded to thingiverse.com
     before end_date.  If end_date is None, use today's date.
@@ -76,7 +120,8 @@ def crawl_new_things(N, sleep_seconds, output_dir):
                 continue;
             print("thing id: {}".format(thing_id))
             thing_ids.add(thing_id);
-            for file_id in get_files_in_thing(thing_id, sleep_seconds):
+            licnese, thing_files = get_thing(thing_id, sleep_seconds);
+            for file_id in thing_files:
                 if file_id in file_ids:
                     continue;
                 file_ids.add(file_id);
@@ -84,19 +129,17 @@ def crawl_new_things(N, sleep_seconds, output_dir):
                 filename = download_file(file_id, output_dir);
                 if filename is not None:
                     if should_keep(filename):
-                        print("good");
-                        records.append((thing_id, file_id, filename));
+                        records.append((thing_id, file_id, filename, license));
                         if len(records) >= N:
                             return records;
                     else:
-                        print("not good");
                         os.remove(filename);
 
         page += 1;
         # Sleep a bit to avoid being mistaken as DoS.
         #time.sleep(sleep_seconds);
 
-def get_files_in_thing(thing_id, sleep_seconds):
+def get_thing(thing_id, sleep_seconds):
     base_url = "http://www.thingiverse.com/{}:{}";
     file_ids = [];
 
@@ -104,7 +147,8 @@ def get_files_in_thing(thing_id, sleep_seconds):
     r = requests.get(url);
     if r.status_code != 200:
         print("failed to retrieve thing {}".format(thing_id));
-    return parse_file_ids(r.text);
+    license = parse_license(r.text);
+    return license, parse_file_ids(r.text);
 
 def get_download_link(file_id):
     base_url = "http://www.thingiverse.com/{}:{}";
@@ -124,7 +168,7 @@ def download_file(file_id, output_dir):
     __, ext = os.path.splitext(link);
     output_file = "{}{}".format(file_id, ext.lower());
     output_file = os.path.join(output_dir, output_file);
-    command = "wget -q --tries=10 -O {} {}".format(output_file, link);
+    command = "wget -q --tries=20 --waitretry 20 -O {} {}".format(output_file, link);
     check_call(command.split());
     return output_file;
 
@@ -172,7 +216,7 @@ def main():
     records = crawl_new_things(args.N, sleep_seconds, output_dir);
 
     with open("summary.csv", 'w') as fout:
-        fout.write("thing_id, fild_id, file\n");
+        fout.write("thing_id, fild_id, file, license\n");
         for entry in records:
             fout.write(",".join([str(val) for val in entry]) + "\n");
 
