@@ -7,7 +7,6 @@ import os.path
 import requests
 import re
 import time
-import pymesh
 from subprocess import check_call
 
 def utc_mktime(utc_tuple):
@@ -99,7 +98,7 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids;
 
-def crawl_new_things(N, sleep_seconds, output_dir):
+def crawl_new_things(N, output_dir):
     #baseurl = "http://www.thingiverse.com/newest/page:{}";
     #baseurl = "http://www.thingiverse.com/explore/popular/page:{}";
     baseurl = "http://www.thingiverse.com/explore/featured/page:{}";
@@ -111,16 +110,15 @@ def crawl_new_things(N, sleep_seconds, output_dir):
 
     while True:
         url = baseurl.format(page+1);
-        r = requests.get(url);
-        if r.status_code != 200:
-            print("failed to retrieve page {}".format(url));
+        contents = get_url(url);
+        page += 1;
 
-        for thing_id in parse_thing_ids(r.text):
+        for thing_id in parse_thing_ids(contents):
             if thing_id in thing_ids:
                 continue;
             print("thing id: {}".format(thing_id))
             thing_ids.add(thing_id);
-            license, thing_files = get_thing(thing_id, sleep_seconds);
+            license, thing_files = get_thing(thing_id);
             for file_id in thing_files:
                 if file_id in file_ids:
                     continue;
@@ -128,26 +126,41 @@ def crawl_new_things(N, sleep_seconds, output_dir):
                 print("  file id: {}".format(file_id));
                 result = download_file(file_id, output_dir);
                 if result is None: continue;
-                filename, name, link = result;
+                filename, link = result;
                 if filename is not None:
-                    records.append((thing_id, file_id, filename, name, license, link));
+                    records.append((thing_id, file_id, filename, license, link));
                     if len(records) >= N:
                         return records;
 
-        page += 1;
-        # Sleep a bit to avoid being mistaken as DoS.
-        time.sleep(sleep_seconds);
+            # Sleep a bit to avoid being mistaken as DoS.
+            time.sleep(0.5);
+            save_records(records);
 
-def get_thing(thing_id, sleep_seconds):
+def get_thing(thing_id):
     base_url = "http://www.thingiverse.com/{}:{}";
     file_ids = [];
 
     url = base_url.format("thing", thing_id);
+    contents = get_url(url);
+    license = parse_license(contents);
+    return license, parse_file_ids(contents);
+
+def get_url(url):
     r = requests.get(url);
+    sleep_time = 1.0;
+    while r.status_code != 200:
+        print("sleep {}s".format(sleep_time));
+        time.sleep(sleep_time);
+        r = requests.get(url);
+        sleep_time += 2;
+        if (sleep_time > 600):
+            # We have sleeped for over 10 minutes, the page probably does
+            # not exist.
+            break;
     if r.status_code != 200:
         print("failed to retrieve thing {}".format(thing_id));
-    license = parse_license(r.text);
-    return license, parse_file_ids(r.text);
+    else:
+        return r.text;
 
 def get_download_link(file_id):
     base_url = "http://www.thingiverse.com/{}:{}";
@@ -164,36 +177,23 @@ def download_file(file_id, output_dir):
     link = get_download_link(file_id);
     if link is None:
         return None;
-    name, ext = os.path.splitext(link);
+    __, ext = os.path.splitext(link);
     output_file = "{}{}".format(file_id, ext.lower());
     output_file = os.path.join(output_dir, output_file);
     command = "wget -q --tries=20 --waitretry 20 -O {} {}".format(output_file, link);
     #check_call(command.split());
-    return output_file, name, link;
+    return output_file, link;
 
-def should_keep(filename):
-    return true;
-    try:
-        mesh = pymesh.load_mesh(filename);
-        if mesh.dim != 3: return False;
-        if mesh.vertex_per_face != 3: return False;
-        if not mesh.is_oriented(): return False;
-        if not mesh.is_closed(): return False;
-        degenerated_faces = pymesh.get_degenerated_faces(mesh);
-        if len(degenerated_faces) > 0: return True;
-        self_intersections = pymesh.detect_self_intersection(mesh);
-        if len(self_intersections) > 0: return True;
-        return False;
-    except:
-        return False;
+def save_records(records):
+    with open("summary.csv", 'w') as fout:
+        fout.write("thing_id, file_id, file, license, link\n");
+        for entry in records:
+            fout.write(",".join([str(val) for val in entry]) + "\n");
 
 def parse_args():
     parser = argparse.ArgumentParser(
             description="Crawl data from thingiverse",
             epilog="Written by Qingnan Zhou <qnzhou at gmail dot com>");
-    #parser.add_argument("--end-date", help="e.g. 06/22/2015", default=None);
-    parser.add_argument("--sleep", type=float, default=0.0,
-            help="pause between downloads in s");
     parser.add_argument("--output-dir", "-o", help="output directories",
             default=".");
     parser.add_argument("N", type=int,
@@ -203,22 +203,9 @@ def parse_args():
 def main():
     args = parse_args();
 
-    #if args.end_date is not None:
-    #    month, day, year = args.end_date.split("/");
-    #    args.end_date = datetime.date(year, month, day);
-    #else:
-    #    args.end_date = datetime.datetime.now().date();
-
-    #print("Crawling things uploaded before {}".format(args.end_date));
-    #thing_ids = crawl_thing_ids(args.N, args.end_date);
-    sleep_seconds = args.sleep;
     output_dir = args.output_dir
-    records = crawl_new_things(args.N, sleep_seconds, output_dir);
-
-    with open("summary.csv", 'w') as fout:
-        fout.write("thing_id, file_id, file, name, license, link\n");
-        for entry in records:
-            fout.write(",".join([str(val) for val in entry]) + "\n");
+    records = crawl_new_things(args.N, output_dir);
+    save_records(records);
 
 if __name__ == "__main__":
     main();

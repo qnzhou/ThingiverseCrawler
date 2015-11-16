@@ -6,23 +6,26 @@ Thingiverse Crawler is a simple script to batch download things from
 Thingiverse.  It does not use the thingiverse API because non-web application
 flow is not yet supported.
 
+The script dynamically update wait time to prevent it being blocked by
+Thingiverse website.
+
 ###Example:###
 
 Retrieve information of the newest 1000 things:
 
     $ ./thingiverse_crawler.py 1000
 
-Two files will be created: `links.txt` and `summary.csv`.  To download all 1000 things:
+A `summary.csv` will be created.  It contians the following information:
 
-    $ wget -i links.txt
+    * ``thing_id``
+    * ``file_id``
+    * ``file``: where to store the output file.
+    * ``license``: info about the license it is published in.
+    * ``link``: direct link for download.
 
-The summary file contains the thing ID and file ID of each file.
+To download all 1000 files:
 
-    $ head summary.csv
-    thing_id, fild_id, link
-    894587,1414437,https://thingiverse-production-new.s3.amazonaws.com/assets/e1/9b/6e/ca/ad/CORE.stl
-    894587,1414438,https://thingiverse-production-new.s3.amazonaws.com/assets/26/7c/82/a9/77/LAMPSHADE.stl
-    ...
+    $ ./download_model.py summary.csv
 
 ###Author:###
 
