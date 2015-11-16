@@ -17,11 +17,11 @@ Retrieve information of the newest 1000 things:
 
 A `summary.csv` will be created.  It contians the following information:
 
-    * ``thing_id``
-    * ``file_id``
-    * ``file``: where to store the output file.
-    * ``license``: info about the license it is published in.
-    * ``link``: direct link for download.
+    * `thing_id`
+    * `file_id`
+    * `file`: where to store the output file.
+    * `license`: info about the license it is published in.
+    * `link`: direct link for download.
 
 To download all 1000 files:
 

@@ -5,7 +5,7 @@
 
 import argparse
 import csv
-from subprocess import check_call
+from subprocess import call
 import multiprocessing
 
 def download_single_file(entry):
@@ -13,10 +13,23 @@ def download_single_file(entry):
     link = entry[1];
     command = "wget -q --tries=600 --waitretry 600 -O {} {}".format(
             output_file, link);
-    check_call(command.split());
+    r = call(command.split());
+
+    sleep_time = 1.0;
+    while r != 0:
+        time.sleep(sleep_time);
+        r = call(command.split());
+        sleep_time += 2.0;
+        if sleep_time > 600:
+            print("cannot download {}".format(link));
+            break;
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__);
+    parser.add_argument("--start", default=None, type=int,
+            help="starting model index");
+    parser.add_argument("--end", default=None, type=int,
+            help="until model index");
     parser.add_argument("summary", help="summary file");
     return parser.parse_args();
 
@@ -34,7 +47,15 @@ def main():
 
         entries = [(row[file_idx], row[link_idx]) for row in csv_reader];
 
-    pool.map(download_single_file, entries);
+    if args.start is None:
+        start = 0;
+    else:
+        start = args.start;
+    if args.end is None:
+        end = len(entries);
+    else:
+        end = args.end;
+    pool.map(download_single_file, entries[start:end]);
 
 if __name__ == "__main__":
     main();
