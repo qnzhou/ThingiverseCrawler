@@ -40,7 +40,7 @@ def main():
     pool = multiprocessing.Pool(multiprocessing.cpu_count());
     with open(summary_file, 'r') as fin:
         csv_reader = csv.reader(fin);
-        header = csv_reader.next();
+        header = next(csv_reader);
         header = [str(item).strip() for item in header];
         link_idx = header.index("link");
         file_id_idx = header.index("file_id");
