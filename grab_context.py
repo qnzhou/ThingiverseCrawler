@@ -34,6 +34,14 @@ def extract_tags(contents):
         return [];
     return r;
 
+def extract_title_and_author(contents):
+    pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
+    r = re.findall(pattern, contents);
+    if r is not None:
+        return r[0];
+    else:
+        return None, None;
+
 def grab_context(thing_ids):
     contexts = [];
     num_tries = 0;
@@ -50,11 +58,15 @@ def grab_context(thing_ids):
             publish_time = extract_publish_time(contents);
             category = extract_category(contents);
             tags = extract_tags(contents);
+            title, author = extract_title_and_author(contents);
 
             print("Published time: {}".format(publish_time.isoformat()));
             print("Category      : {}".format(category));
             print("Tags          : {}".format(tags));
-            contexts.append((thing_id, publish_time, category, tags));
+            print("Title         : {}".format(title));
+            print("Author        : {}".format(author));
+            contexts.append((
+                thing_id, publish_time, category, tags, title, author));
         thing_ids = missing;
         num_tries+=1;
 
@@ -80,17 +92,19 @@ def main():
 
     # Save context
     with open("context.csv", 'w') as fout:
-        fout.write("thing_id, publish_time, category, subcategory\n");
+        fout.write("thing_id, publish_time, category, subcategory, title, author\n");
         for cts in contexts:
             thing_id = cts[0];
             publish_date = cts[1];
             category = cts[2];
+            title = cts[4];
+            author = cts[5];
             if publish_date is not None:
                 publis_date = publish_date.isoformat();
 
             fout.write("{}\n".format(
                 ",".join([str(thing_id), publish_date.isoformat(),
-                    category[0], category[1]])));
+                    category[0], category[1], title, author])));
 
     # Save tags
     with open("tags.csv", 'w') as fout:
