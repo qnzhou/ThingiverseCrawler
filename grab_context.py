@@ -22,7 +22,7 @@ def extract_category(contents):
     pattern = "\"/categories/([\w\-]*)(/([\w\-]*))?\"";
     r = re.findall(pattern, contents);
     if (len(r) == 0):
-        return None;
+        return (None, None);
 
     assert(len(r[0]) == 3);
     return r[0][0], r[0][2];
@@ -35,7 +35,8 @@ def extract_tags(contents):
     return r;
 
 def extract_title_and_author(contents):
-    pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
+    pattern = "<meta property=\"og:title\" content=\"([^<>]+)\s*by\s*([^<>]*)\" />";
+    #pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
     r = re.findall(pattern, contents);
     if r is not None:
         return r[0];
@@ -100,11 +101,11 @@ def main():
             title = cts[4];
             author = cts[5];
             if publish_date is not None:
-                publis_date = publish_date.isoformat();
+                publish_date = publish_date.isoformat();
 
             fout.write("{}\n".format(
-                ",".join([str(thing_id), publish_date.isoformat(),
-                    category[0], category[1], title, author])));
+                ",".join([str(thing_id), publish_date,
+                    str(category[0]), str(category[1]), title, author])));
 
     # Save tags
     with open("tags.csv", 'w') as fout:
