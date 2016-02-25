@@ -145,20 +145,21 @@ def get_thing(thing_id):
     license = parse_license(contents);
     return license, parse_file_ids(contents);
 
-def get_url(url):
+def get_url(url, time_out=600):
     r = requests.get(url);
     sleep_time = 1.0;
     while r.status_code != 200:
         print("sleep {}s".format(sleep_time));
+        print(url);
         time.sleep(sleep_time);
         r = requests.get(url);
         sleep_time += 2;
-        if (sleep_time > 600):
+        if (sleep_time > time_out):
             # We have sleeped for over 10 minutes, the page probably does
             # not exist.
             break;
     if r.status_code != 200:
-        print("failed to retrieve thing {}".format(thing_id));
+        print("failed to retrieve {}".format(url));
     else:
         return r.text;
 

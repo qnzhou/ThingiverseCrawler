@@ -34,19 +34,31 @@ def extract_tags(contents):
         return [];
     return r;
 
-def grab_context(thing_id):
-    print("Thing id: {}".format(thing_id));
-    url = "http://www.thingiverse.com/thing:{}".format(thing_id);
-    contents = get_url(url);
+def grab_context(thing_ids):
+    contexts = [];
+    num_tries = 0;
+    while len(thing_ids) > 0 and num_tries < 3:
+        missing = [];
+        for thing_id in thing_ids:
+            print("Thing id: {}".format(thing_id));
+            url = "http://www.thingiverse.com/thing:{}".format(thing_id);
+            contents = get_url(url, 30 + 10 * num_tries);
+            if contents is None:
+                missing.append(thing_id);
+                continue;
 
-    publish_time = extract_publish_time(contents);
-    category = extract_category(contents);
-    tags = extract_tags(contents);
+            publish_time = extract_publish_time(contents);
+            category = extract_category(contents);
+            tags = extract_tags(contents);
 
-    print("Published time: {}".format(publish_time.isoformat()));
-    print("Category      : {}".format(category));
-    print("Tags          : {}".format(tags));
-    return publish_time, category, tags;
+            print("Published time: {}".format(publish_time.isoformat()));
+            print("Category      : {}".format(category));
+            print("Tags          : {}".format(tags));
+            contexts.append((thing_id, publish_time, category, tags));
+        thing_ids = missing;
+        num_tries+=1;
+
+    return contexts;
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__);
@@ -64,14 +76,15 @@ def main():
         thing_ids = [int(row[thing_id_idx]) for row in csv_reader];
 
     thing_ids = np.unique(thing_ids);
-    contexts = [grab_context(thing_id) for thing_id in thing_ids];
+    contexts = grab_context(thing_ids);
 
     # Save context
     with open("context.csv", 'w') as fout:
         fout.write("thing_id, publish_time, category, subcategory\n");
-        for thing_id, cts in zip(thing_ids, contexts):
-            publish_date = cts[0];
-            category = cts[1];
+        for cts in contexts:
+            thing_id = cts[0];
+            publish_date = cts[1];
+            category = cts[2];
             if publish_date is not None:
                 publis_date = publish_date.isoformat();
 
@@ -82,8 +95,9 @@ def main():
     # Save tags
     with open("tags.csv", 'w') as fout:
         fout.write("thing_id, tag\n");
-        for thing_id, cts in zip(thing_ids, contexts):
-            tags = cts[2];
+        for cts in contexts:
+            thing_id = cts[0];
+            tags = cts[3];
             for tag in tags:
                 fout.write("{},{}\n".format(thing_id, tag));
 
