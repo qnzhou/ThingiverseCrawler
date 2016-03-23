@@ -12,7 +12,7 @@ import time
 def download_single_file(entry):
     output_file = entry[0];
     link = entry[1];
-    command = "wget --tries=1 -O {} {}".format(
+    command = "wget -nv --tries=1 -O {} {}".format(
             output_file, link);
     r = call(command.split());
 
@@ -56,8 +56,8 @@ def main():
         end = len(entries);
     else:
         end = args.end;
-    #pool.map(download_single_file, entries[start:end]);
-    map(download_single_file, entries[start:end]);
+    pool.map(download_single_file, entries[start:end]);
+    #map(download_single_file, entries[start:end]);
 
 if __name__ == "__main__":
     main();
