@@ -5,25 +5,29 @@
 
 import argparse
 import csv
-from subprocess import call
 import multiprocessing
 import time
+import requests
 
 def download_single_file(entry):
+    sleep_time = 1.0;
     output_file = entry[0];
     link = entry[1];
-    command = "wget -nv --tries=1 -O {} {}".format(
-            output_file, link);
-    r = call(command.split());
-
-    sleep_time = 1.0;
-    while r != 0:
-        time.sleep(sleep_time);
-        r = call(command.split());
-        sleep_time += 2.0;
-        if sleep_time > 600:
-            print("cannot download {}".format(link));
-            break;
+    r = None;
+    while r is None or r.status_code != 200:
+        print("Downloading {}".format(output_file));
+        r = requests.get(link, stream=True);
+        if r.status_code == 200:
+            with open(output_file, 'wb') as fout:
+                for chunk in r.iter_content(chunk_size=1024):
+                    if chunk:
+                        fout.write(chunk);
+        else:
+            time.sleep(sleep_time);
+            sleep_time += 2.0;
+            if sleep_time > 600:
+                print("cannot download {}".format(link));
+                break;
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__);
