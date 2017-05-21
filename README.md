@@ -1,6 +1,6 @@
 # Thingiverse Crawler #
 
-###About:###
+### About: ###
 
 Thingiverse Crawler is a simple script to batch download things from
 Thingiverse.  It does not use the thingiverse API because non-web application
@@ -9,7 +9,7 @@ flow is not yet supported.
 The script dynamically update wait time to prevent it being blocked by
 Thingiverse website.
 
-###Example:###
+### Example: ###
 
 Retrieve information of the newest featured 1000 things:
 
@@ -31,7 +31,11 @@ To grab context of each thing (i.e. tags, dates, categories):
 
     $ ./grab_context.py summary.csv
 
-###Author:###
+To get a single file using its `thing_id`
+
+    $ ./get_file.py thing_id
+
+### Author: ###
 
 Qingnan Zhou
 
