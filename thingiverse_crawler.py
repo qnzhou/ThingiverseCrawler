@@ -164,7 +164,7 @@ def get_url(url, time_out=600):
         return r.text;
 
 def get_download_link(file_id):
-    base_url = "http://www.thingiverse.com/{}:{}";
+    base_url = "https://www.thingiverse.com/{}:{}";
     url = base_url.format("download", file_id);
     r = requests.head(url);
     link = r.headers.get("Location", None);
