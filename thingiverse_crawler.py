@@ -7,6 +7,8 @@ import os.path
 import requests
 import re
 import time
+import urllib
+import urlparse
 from subprocess import check_call
 
 def utc_mktime(utc_tuple):
@@ -98,22 +100,35 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids;
 
-def crawl_new_things(N, output_dir):
+def crawl_new_things(N, output_dir, term=None):
     #baseurl = "http://www.thingiverse.com/newest/page:{}";
     #baseurl = "http://www.thingiverse.com/explore/popular/page:{}";
-    baseurl = "http://www.thingiverse.com/explore/featured/page:{}";
+
+    if term is None:
+        baseurl = "http://www.thingiverse.com/explore/featured/page:{}";
+    else:
+        baseurl = "http://www.thingiverse.com/search/page:{}?type=things&q=" + urllib.quote_plus(term);
+
     thing_ids = set();
     file_ids = set();
     records = [];
     num_files = 0;
     page = 0;
+    previous_path = '';
 
     while True:
         url = baseurl.format(page+1);
         contents = get_url(url);
         page += 1;
 
-        for thing_id in parse_thing_ids(contents):
+        # If the previous url ends up being the same as the old one, we should stop as there are no more pages
+        current_path = urlparse.urlparse(contents.url).path;
+        if previous_path == current_path:
+            return records;
+        else:
+            previous_path = current_path;
+
+        for thing_id in parse_thing_ids(contents.text):
             if thing_id in thing_ids:
                 continue;
             print("thing id: {}".format(thing_id))
@@ -129,7 +144,7 @@ def crawl_new_things(N, output_dir):
                 filename, link = result;
                 if filename is not None:
                     records.append((thing_id, file_id, filename, license, link));
-                    if len(records) >= N:
+                    if N is not None and len(records) >= N:
                         return records;
 
             # Sleep a bit to avoid being mistaken as DoS.
@@ -141,7 +156,7 @@ def get_thing(thing_id):
     file_ids = [];
 
     url = base_url.format("thing", thing_id);
-    contents = get_url(url);
+    contents = get_url(url).text;
     license = parse_license(contents);
     return license, parse_file_ids(contents);
 
@@ -161,7 +176,8 @@ def get_url(url, time_out=600):
     if r.status_code != 200:
         print("failed to retrieve {}".format(url));
     else:
-        return r.text;
+        return r;
+        # return r.text;
 
 def get_download_link(file_id):
     base_url = "https://www.thingiverse.com/{}:{}";
@@ -194,18 +210,27 @@ def save_records(records):
 def parse_args():
     parser = argparse.ArgumentParser(
             description="Crawl data from thingiverse",
-            epilog="Written by Qingnan Zhou <qnzhou at gmail dot com>");
+            epilog="Written by Qingnan Zhou <qnzhou at gmail dot com> Modified by Mike Gleason");
     parser.add_argument("--output-dir", "-o", help="output directories",
             default=".");
-    parser.add_argument("N", type=int,
-            help="how many files to crawl");
-    return parser.parse_args();
+    parser.add_argument("--number", "-n", type=int,
+            help="how many files to crawl", default=None);
+    parser.add_argument("--search-term", "-s", type=str, 
+            help="term to search for");
+    return parser;
 
 def main():
-    args = parse_args();
+    parser = parse_args();
+
+    args = parser.parse_args();
+
+    if args.number is None and args.search_term is None:
+        parser.error('Number or Search Term required');
 
     output_dir = args.output_dir
-    records = crawl_new_things(args.N, output_dir);
+    number = args.number;
+
+    records = crawl_new_things(args.number, output_dir, args.search_term);
     save_records(records);
 
 if __name__ == "__main__":
