@@ -8,12 +8,20 @@ import csv
 import multiprocessing
 import time
 import requests
+import os
+import errno
 
 def download_single_file(entry):
     sleep_time = 1.0;
     output_file = entry[0];
     link = entry[1];
     r = None;
+    if not os.path.exists(os.path.dirname(output_file)):
+        try:
+            os.makedirs(os.path.dirname(output_file))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
     while r is None or r.status_code != 200:
         print("Downloading {}".format(output_file));
         r = requests.get(link, stream=True);
