@@ -100,7 +100,7 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids;
 
-def crawl_new_things(N, output_dir, term=None):
+def crawl_new_things(N, output_dir, term=None, organize=False):
     #baseurl = "http://www.thingiverse.com/newest/page:{}";
     #baseurl = "http://www.thingiverse.com/explore/popular/page:{}";
 
@@ -139,7 +139,7 @@ def crawl_new_things(N, output_dir, term=None):
                     continue;
                 file_ids.add(file_id);
                 print("  file id: {}".format(file_id));
-                result = download_file(file_id, output_dir);
+                result = download_file(file_id, thing_id, output_dir, organize);
                 if result is None: continue;
                 filename, link = result;
                 if filename is not None:
@@ -149,7 +149,7 @@ def crawl_new_things(N, output_dir, term=None):
 
             # Sleep a bit to avoid being mistaken as DoS.
             time.sleep(0.5);
-            save_records(records);
+            save_records(records, term);
 
 def get_thing(thing_id):
     base_url = "http://www.thingiverse.com/{}:{}";
@@ -190,19 +190,22 @@ def get_download_link(file_id):
             return None;
         return link;
 
-def download_file(file_id, output_dir):
+def download_file(file_id, thing_id, output_dir, organize):
     link = get_download_link(file_id);
     if link is None:
         return None;
     __, ext = os.path.splitext(link);
     output_file = "{}{}".format(file_id, ext.lower());
+    if organize:
+        output_file = os.path.join(str(thing_id), output_file);
     output_file = os.path.join(output_dir, output_file);
     command = "wget -q --tries=20 --waitretry 20 -O {} {}".format(output_file, link);
     #check_call(command.split());
     return output_file, link;
 
-def save_records(records):
-    with open("summary.csv", 'w') as fout:
+def save_records(records, term):
+    output_name = term+"-summary" if term else "summary"
+    with open(output_name+".csv", 'w') as fout:
         fout.write("thing_id, file_id, file, license, link\n");
         for entry in records:
             fout.write(",".join([str(val) for val in entry]) + "\n");
@@ -215,13 +218,14 @@ def parse_args():
             default=".");
     parser.add_argument("--number", "-n", type=int,
             help="how many files to crawl", default=None);
-    parser.add_argument("--search-term", "-s", type=str, 
+    parser.add_argument("--search-term", "-s", type=str,
             help="term to search for");
+    parser.add_argument('--organize', dest='organized', default=False, action='store_true',
+            help="Organize files by their main category")
     return parser;
 
 def main():
     parser = parse_args();
-
     args = parser.parse_args();
 
     if args.number is None and args.search_term is None:
@@ -230,8 +234,8 @@ def main():
     output_dir = args.output_dir
     number = args.number;
 
-    records = crawl_new_things(args.number, output_dir, args.search_term);
-    save_records(records);
+    records = crawl_new_things(args.number, output_dir, args.search_term, args.organized);
+    save_records(records, args.search_term);
 
 if __name__ == "__main__":
     main();
