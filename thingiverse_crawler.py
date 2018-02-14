@@ -237,8 +237,8 @@ def main():
     parser = parse_args()
     args = parser.parse_args()
 
-    if args.number is None and args.search_term is None:
-        parser.error('Number or Search Term required')
+    if args.number is None and (args.search_term is None and args.category is None):
+        parser.error('Number or Search/Category Term required')
 
     output_dir = args.output_dir
     number = args.number
