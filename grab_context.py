@@ -9,6 +9,7 @@ import datetime
 import re
 import requests
 import numpy as np
+import os
 from thingiverse_crawler import get_url
 
 def extract_publish_time(contents):
@@ -90,7 +91,8 @@ def main():
     contexts = grab_context(thing_ids);
 
     # Save context
-    with open("context.csv", 'w') as fout:
+    summary_name = os.path.splitext(summary_file)[0]
+    with open(summary_name+"-context.csv", 'w') as fout:
         fout.write("thing_id, publish_time, category, subcategory, title, author\n");
         for cts in contexts:
             thing_id = cts[0];
@@ -106,7 +108,7 @@ def main():
                     str(category[0]), str(category[1]), title, author])));
 
     # Save tags
-    with open("tags.csv", 'w') as fout:
+    with open(summary_name+"-tags.csv", 'w') as fout:
         fout.write("thing_id, tag\n");
         for cts in contexts:
             thing_id = cts[0];
