@@ -23,7 +23,6 @@ def extract_category(contents):
     r = re.findall(pattern, contents);
     if (len(r) == 0):
         return (None, None);
-
     assert(len(r[0]) == 3);
     return r[0][0], r[0][2];
 
@@ -35,8 +34,8 @@ def extract_tags(contents):
     return r;
 
 def extract_title_and_author(contents):
-    pattern = "<meta property=\"og:title\" content=\"([^<>]+)\s*by\s*([^<>]*)\" />";
-    #pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
+    #pattern = "<meta property=\"og:title\" content=\"([^<>]+)\s*by\s*([^<>]*)\" />";
+    pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
     r = re.findall(pattern, contents);
     if r is not None:
         return r[0];
@@ -55,11 +54,10 @@ def grab_context(thing_ids):
             if contents is None:
                 missing.append(thing_id);
                 continue;
-
-            publish_time = extract_publish_time(contents);
-            category = extract_category(contents);
-            tags = extract_tags(contents);
-            title, author = extract_title_and_author(contents);
+            publish_time = extract_publish_time(contents.text);
+            category = extract_category(contents.text);
+            tags = extract_tags(contents.text);
+            title, author = extract_title_and_author(contents.text);
 
             print("Published time: {}".format(publish_time.isoformat()));
             print("Category      : {}".format(category));
@@ -118,4 +116,3 @@ def main():
 
 if __name__ == "__main__":
     main();
-
