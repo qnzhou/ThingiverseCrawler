@@ -100,16 +100,19 @@ def crawl_thing_ids(N, end_date=None):
 
     return thing_ids
 
-def crawl_new_things(N, output_dir, term=None, category=None, organize=False):
+def crawl_things(N, output_dir, term=None, category=None, source=None, organize=False):
     #baseurl = "http://www.thingiverse.com/newest/page:{}"
     #baseurl = "http://www.thingiverse.com/explore/popular/page:{}"
 
     key = None
     if term is None:
+        assert(source is not None);
+        url_prefix= "http://www.thingiverse.com/explore/{}/".format(source);
+
         if category is None:
-            baseurl = "http://www.thingiverse.com/explore/featured/page:{}"
+            baseurl = url_prefix + "page:{}"
         else:
-            baseurl = "https://www.thingiverse.com/explore/newest/"+urllib.quote_plus(category)+"/page:{}"
+            baseurl = url_prefix + urllib.quote_plus(category) + "/page:{}"
             key = category
     else:
         baseurl = "http://www.thingiverse.com/search/page:{}?type=things&q=" + urllib.quote_plus(term)
@@ -209,7 +212,7 @@ def download_file(file_id, thing_id, output_dir, organize):
     #check_call(command.split())
     return output_file, link
 
-def save_records(records, key):
+def save_records(records, key=None):
     output_name = key+"-summary" if key else "summary"
     with open(output_name+".csv", 'w') as fout:
         fout.write("thing_id, file_id, file, license, link\n")
@@ -224,13 +227,16 @@ def parse_args():
             default=".")
     parser.add_argument("--number", "-n", type=int,
             help="how many files to crawl", default=None)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--search-term", "-s", type=str,
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--search-term", "-s", type=str, default=None,
             help="term to search for")
-    group.add_argument("--category", "-c", type=str,
+    group.add_argument("--category", "-c", type=str, default=None,
             help="catergory to search for")
     parser.add_argument('--organize', dest='organized', default=False, action='store_true',
             help="organize files by their main category")
+    parser.add_argument("--source", choices=("newest", "featured", "popular",
+        "verified", "made-things", "derivatives", "customizable",
+        "random-things", "firehose"), default="featured");
     return parser
 
 def main():
@@ -243,7 +249,13 @@ def main():
     output_dir = args.output_dir
     number = args.number
 
-    records = crawl_new_things(args.number, output_dir, args.search_term, args.category, args.organized)
+    records = crawl_things(
+            args.number,
+            output_dir,
+            args.search_term,
+            args.category,
+            args.source,
+            args.organized)
     if args.search_term:
         save_records(records, args.search_term)
     elif args.category:
