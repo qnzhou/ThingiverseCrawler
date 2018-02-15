@@ -9,6 +9,7 @@ import datetime
 import re
 import requests
 import numpy as np
+import os
 from thingiverse_crawler import get_url
 
 def extract_publish_time(contents):
@@ -23,7 +24,6 @@ def extract_category(contents):
     r = re.findall(pattern, contents);
     if (len(r) == 0):
         return (None, None);
-
     assert(len(r[0]) == 3);
     return r[0][0], r[0][2];
 
@@ -35,8 +35,8 @@ def extract_tags(contents):
     return r;
 
 def extract_title_and_author(contents):
-    pattern = "<meta property=\"og:title\" content=\"([^<>]+)\s*by\s*([^<>]*)\" />";
-    #pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
+    #pattern = "<meta property=\"og:title\" content=\"([^<>]+)\s*by\s*([^<>]*)\" />";
+    pattern = "<title>([^<>]+) by ([^<>]*) - Thingiverse</title>";
     r = re.findall(pattern, contents);
     if r is not None:
         return r[0];
@@ -55,11 +55,10 @@ def grab_context(thing_ids):
             if contents is None:
                 missing.append(thing_id);
                 continue;
-
-            publish_time = extract_publish_time(contents);
-            category = extract_category(contents);
-            tags = extract_tags(contents);
-            title, author = extract_title_and_author(contents);
+            publish_time = extract_publish_time(contents.text);
+            category = extract_category(contents.text);
+            tags = extract_tags(contents.text);
+            title, author = extract_title_and_author(contents.text);
 
             print("Published time: {}".format(publish_time.isoformat()));
             print("Category      : {}".format(category));
@@ -92,7 +91,8 @@ def main():
     contexts = grab_context(thing_ids);
 
     # Save context
-    with open("context.csv", 'w') as fout:
+    summary_name = os.path.splitext(summary_file)[0]
+    with open(summary_name+"-context.csv", 'w') as fout:
         fout.write("thing_id, publish_time, category, subcategory, title, author\n");
         for cts in contexts:
             thing_id = cts[0];
@@ -108,7 +108,7 @@ def main():
                     str(category[0]), str(category[1]), title, author])));
 
     # Save tags
-    with open("tags.csv", 'w') as fout:
+    with open(summary_name+"-tags.csv", 'w') as fout:
         fout.write("thing_id, tag\n");
         for cts in contexts:
             thing_id = cts[0];
@@ -118,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main();
-
