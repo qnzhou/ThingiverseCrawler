@@ -213,7 +213,9 @@ def download_file(file_id, thing_id, output_dir, organize):
     return output_file, link
 
 def save_records(records, key=None):
-    output_name = key+"-summary" if key else "summary"
+    # Enforce kebab case file name
+    output_name = re.sub('(\w) (\w)', r'\1-\2', key).lower()+"-" if key else ""
+    output_name += "summary"
     with open(output_name+".csv", 'w') as fout:
         fout.write("thing_id, file_id, file, license, link\n")
         for entry in records:
